@@ -18,6 +18,12 @@ const projectsData: Project[] = [
     imgSrc: '/static/images/time-machine.jpg',
     href: 'https://www.npmjs.com/package/stateful-electron-window',
   },
+  {
+    title: 'Clean CSDN Blog',
+    description: `去除广告的 CSDN Blog - Chrome 插件`,
+    imgSrc: '/static/images/time-machine.jpg',
+    href: 'https://chromewebstore.google.com/detail/clean-csdn-blog/pihbmjdkfcdbdpdpjjaamnbafcmfoald',
+  },
 ]
 
 export default projectsData
