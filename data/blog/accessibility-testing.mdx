@@ -1,0 +1,248 @@
+---
+title: Accessibility 在 UI 测试中的应用
+date: '2020-12-21'
+tags: ['accessibility', 'test']
+draft: false
+summary: '`Accessibility` 应用在 UI 测试中，从而提升测试的稳定性以及对测试的信心。'
+---
+
+一提到 `Accessibility` 或 `A11y` 或 `可访问性` 或 `无障碍访问`，可能你就会想到这是针对有浏览障碍的用户的技术，但其实 `Accessibility` 的目标是让所有人（无论是一般人还是有障碍的朋友）都能在网站上便捷获取信息。
+
+本文描述了如何将 `Accessibility` 应用在 UI 测试中，从而提升测试的稳定性以及对测试的信心。
+
+### 传统的 UI 测试
+
+不管是组件测试还是端到端（End To End）测试，我们通常都会要先选择到元素，然后再进行操作和验证。传统的选择元素的策略有：
+
+| 定位器      | HTML                                                                            |
+| -------- | ------------------------------------------------------------------------------- |
+| class 名称 | `<button class="btn btn-primary">按钮</button>`                                   |
+| css 选择器  | `<div class="btn-group"><button class="btn btn-primary">Primary</button></div>` |
+| id 属性    | `<div id="my-btn">按钮</div>`                                                     |
+| name 属性  | `<input name="account">`                                                        |
+| tag 名称   | `<div>按钮</div>`                                                                 |
+| xpath    | /html/body/div[1]/div[3]/input                                                  |
+| ...      | ...                                                                             |
+
+如果你编写过 UI 测试，肯定会知道上面很多方式都是不稳定的，会随着代码的重构更改而变化，从而导致测试代码失败，但是这种失败是无意义的。例如：
+
+`<button class="btn btn-primary">按钮</button>`
+
+变为
+
+`<button class="btn btn-secondary">按钮</button>`
+
+此时通过 css 选择器来获取元素就会失败，但是按钮对应的功能并没有变化。
+
+### 更贴近用户的 UI 测试
+
+为了能让测试代码变得易维护和稳定，我们不妨尝试从用户的角度来思考，一个用户如何在页面上找到对应的元素呢？
+
+以 Google 首页为例，用户如何找到输入框和搜索按钮呢？
+
+![image-20221101155026039.png](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/c3f7c1363af84c0a8a739918d2904bed~tplv-k3u1fbpfcp-watermark.image?)
+
+用户通常会根据其外观，文字，以及交互来判断元素的类别。例如，输入框是矩形框，鼠标移上去会高亮边框，鼠标变成指针形状，点击获取焦点会可以接受输入内容；再如按钮是矩形框，内有文字，鼠标移上去会高亮背景，鼠标指针变成手型。
+
+那如何通过代码的方式来模拟用户查找和选择元素呢？我们需要 WAI-ARIA。
+
+#### WAI-ARIA
+
+WAI-ARIA 是 `A11y` 应用规范，运用好这些技术细则，任何人都可以快捷能轻松访问我们的应用。以下是规范里的两个主要特征：角色（Roles）和状态与属性（States and Properties）。
+
+例如输入框的代码：
+
+```
+<input class="gLFyf gsfi" jsaction="paste:puy29d;" maxlength="2048" name="q" type="text" aria-autocomplete="both" aria-haspopup="false" autocapitalize="off" autocomplete="off" autocorrect="off" autofocus="" role="combobox" spellcheck="false" title="Google 搜索" value="" aria-label="搜索" data-ved="0ahUKEwiTmfO_v4z7AhW6mFYBHbZHAkwQ39UDCAQ">
+```
+
+和按钮的代码：
+
+```
+<input class="RNmpXc" value="&nbsp;手气不错&nbsp;" aria-label="&nbsp;手气不错&nbsp;" name="btnI" type="submit" jsaction="trigger.kWlxhc" data-ved="0ahUKEwiTmfO_v4z7AhW6mFYBHbZHAkwQ19QECBE">
+```
+
+基于角色（combobox） 和 属性（aria-label），再结合 Testing Library 框架，我们可以使用其提供的 API：
+
+```
+getByRole('combobox', { name: /搜索/i  })
+```
+
+来查找到输入框元素。
+
+类似按钮也可以通过：
+
+```
+getByRole('button', { name: /google 搜索/i })
+```
+
+来选择按钮元素。
+
+我们可以看到基于角色和属性的查询元素方式是比较稳定的，同时也更贴近用户在页面查找元素的方式。
+
+### 更多示例
+
+#### 1. 选择标签页（Tab）中已选中的元素
+
+##### UI 图：
+
+ITEM ONE 项已经被选中。
+
+![image-20221028174732202.png](https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/2267e80c527c431f920d61006f1c554d~tplv-k3u1fbpfcp-watermark.image?)
+
+##### UI 示意代码：
+
+这时我们可以使用 `aria-selected` 来标识被选中元素。
+
+```
+<div role="tablist">
+    <button role="tab" aria-selected="true">ITEM ONE</button>
+    <button role="tab" aria-selected="false">ITEM TWO</button>
+    <button role="tab" aria-selected="false">ITEM THREE</button>
+</div>
+```
+
+##### 选择元素：
+
+```
+getByRole('tab', { selected: true })
+```
+
+#### 2. 选择下拉框勾选的项
+
+##### UI图：
+
+Van Henry 项被勾选了。
+
+![image-20221028205954066.png](https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/20ab129382bb4c35883d2d06fb9aa87d~tplv-k3u1fbpfcp-watermark.image?)
+
+这时我们可以使用 `aria-checked` 来标识已勾选的元素。
+
+##### UI 示意代码：
+
+```
+<ul role="listbox">
+    <li role="option" aria-checked="false">Oliver Hansen</li>
+    <li role="option" aria-checked="true">Van Henry</li>
+    <li role="option" aria-checked="false">April Tucker</li>
+    <li role="option" aria-checked="false">Ralph Hubbard</li>
+</ul>
+```
+
+##### 选择元素：
+
+```
+getByRole('option', { checked: true })
+```
+
+#### 3. 侧边栏中的选中链接
+
+##### UI 图：
+
+Dashboard 链接被选择。
+
+![image-20221028214842203.png](https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/193a5cde226a4690959bf221e5fa0757~tplv-k3u1fbpfcp-watermark.image?)
+
+##### UI 示意代码：
+
+这时我们可以使用 `aria-current` 来标识被选中元素：
+
+```
+<nav>
+    <a href="current/page" aria-current="true">Dashboard</a>
+    <a href="another/page1">User</a>
+    <a href="another/page2">Product</a>
+    <a href="another/page3">Blog</a>
+</nav>
+```
+
+##### 选择元素：
+
+```
+getByRole('link', { current: true })
+```
+
+#### 4. 选择开关（Toggle）按钮中已选中的元素
+
+##### UI 图：
+
+![image-20221028225350769.png](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/6a6219fe77d04945bb5cfe66ce9e1dc4~tplv-k3u1fbpfcp-watermark.image?)
+
+##### UI 示意代码：
+
+这时我们可以使用 `aria-pressed` 来标识被选中元素：
+
+```
+<div role="group">
+    <button aria-pressed="true">左对齐</button>
+    <button>右对齐</button>
+    <button>居中</button>
+</nav>
+```
+
+##### 选择元素：
+
+```
+getByRole('button', { pressed: true })
+```
+
+#### 5.选择折叠面板展开的项
+
+##### UI 图：
+
+![image-20221101145226170.png](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/6aff3cc8e8254746950392803d5fcd6e~tplv-k3u1fbpfcp-watermark.image?)
+
+##### UI 示意代码：
+
+这时我们可以使用 `aria-expanded` 来标识被展开的元素：
+
+```
+<ul>
+    <li>
+      <a aria-expanded="true" href="..."
+        >Accordion 1</a
+      >
+      <ul>
+        <li><a href="#">Submenu Item 1</a></li>
+        <li><a href="#">Submenu Item 1</a></li>
+      </ul>
+    </li>
+    <li><a href="#">Accordion 2</a></li>
+</ul>
+```
+
+##### 选择元素
+
+```
+getByRole('link', { expanded: true })
+```
+
+### 总结
+
+通过结合 `Accessibility` 和 UI 测试的例子，我们不难发现这是一种更加稳定、更贴近用户使用方式的形式来编写测试代码，同时我们也反思我们应用的可访问是否合理，可谓是一举两得。
+
+Testing-Library 作为组件测试的事实上的标准，而且MUI 和 Antd 都在使用其作为组件测试依赖，它遵循以下原则：
+
+> 测试代码与页面和组件被使用的方式越接近，测试代码能保证质量的信心就也大。
+
+Testing-Library 鼓励你避免测试组件的细节，例如内部状态，内部方法，声明周期函数等。
+
+Testing-Library 同时支持 [React](https://testing-library.com/docs/react-testing-library/intro), [Angular](https://testing-library.com/docs/angular-testing-library/intro), and [Vue](https://testing-library.com/docs/vue-testing-library/intro) 等流行 UI 框架。
+
+更多的示例和具体的 API 使用可以参考：
+
+[Testing-Library 官方文档](https://testing-library.com/) 和 [Testing-Library 中文文档](https://testing-library.top/)
+
+想要了解更多关于角色（Roles）和状态属性：
+
+https://www.w3.org/TR/2014/REC-wai-aria-20140320/roles
+
+https://www.w3.org/TR/2014/REC-wai-aria-20140320/states_and_properties
+
+### 资料参考：
+
+https://developer.mozilla.org/en-US/docs/Web/Accessibility
+
+https://developer.mozilla.org/en-US/docs/Learn/Accessibility
+
+https://juejin.cn/post/6844904017127047182
