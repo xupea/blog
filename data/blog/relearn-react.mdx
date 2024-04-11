@@ -1,0 +1,210 @@
+---
+title: 重学 React 组件
+date: '2017-07-15'
+tags: ['react']
+draft: false
+layout: PostBanner
+images: ['/static/images/canada/mountains.jpg']
+summary: The scenic lands of Canada featuring maple leaves, snow-capped mountains, turquoise lakes and Toronto. Take in the sights in this photo gallery exhibition and see how easy it is to replicate with some MDX magic and tailwind classes.
+---
+
+> 本文不涉及任何具体 Hook 的使用，类组件和函数组件比较，以及 React 引入 Hook 的动机（解决的问题）等。
+
+
+不知道怎么样正确使用 React Hooks，我相信这是很多从事 React 前端开发工程师的困惑之一。随着 React Hooks 被捧到了天上，你不得不看文档和视频来学习，但是越看越糊涂，所以你可能会怀疑是不是自己变老了，“卷”不动了。
+
+等等！先不要怀疑自己的能力，如果是在 React 引入 Hook 之前，你弄不明白 React，大概率原因在你。但是这次，我可以很负责地告诉你，问题的根源是 React 自己，原因有两个：
+
+1. 令人迷惑的官方文档
+
+官方文档通常学习的第一手资料。不管你打开的是[旧文档](https://reactjs.org/)，还是[新文档](https://beta.reactjs.org/)，你可以感受到文档中 Hook 内容和现有文档的割裂，以及新文档中的模糊和矛盾。React 团队一直在集中精力解决 Hooks 的稳定和存在的问题，而不是在文档上。
+
+2. 问题驱动
+
+不管是 [RFCs](https://github.com/reactjs/rfcs/blob/useevent/text/0068-react-hooks.md) ，还是宣传的 [视频](https://youtu.be/dpw9EHDh2bM) ，都是通过对比类组件或解决类组件存在的问题这种形式展开来介绍 Hook。这样做的好处是通过对比可以快速的熟悉 Hook，通过解决问题可以展示 Hook 的优势，但是这种形式会有意或无意中误导开发者。
+
+
+
+本文试图重新梳理 React 和 Hook的关系，进而提供一个新的思路来理解React，React 组件和 Hook。
+
+
+
+### 1.React 核心特性
+
+在重学 React 组件之前，请大家和我简单回顾一下 React 的核心特性，因为这些特性永远不会变：
+
+#### JSX
+
+- 描述 UI 的模板语言
+
+- `React.createElement(component, props, ...children)` 函数的语法糖
+
+- 尽管 JSX 非必须，鉴于现实开发中通常必用，暂且算是核心特性
+
+
+
+#### 组件
+
+- 组件允许你将 UI 拆分为独立可复用的代码片段
+
+- 从概念上类似于 JavaScript 函数。它接受任意的入参，并返回用于描述页面展示内容的 React 元素
+
+
+
+#### Props
+
+- 组件间通过 `Props` 数据传递和通信
+
+
+
+#### State
+
+- 组件的记忆
+
+- 状态的改变，组件的重新渲染
+
+
+
+#### 生命周期
+
+- 挂载，更新，卸载
+
+
+
+这些 React 核心特性是理解任何 React 新引入的概念的基础。
+
+
+
+### 2.React 组件的本质
+
+React 组件在概念上其实很简单，就是数据（Model）到 UI（View）的映射，有点像数学中的函数
+
+
+
+> V = f(M)
+
+
+
+在代码实现层面上，就是组件就是一个 [Javascript 函数](https://beta.reactjs.org/learn/your-first-component#defining-a-component)，它返回 UI 的描述：
+
+```tsx
+// 示意代码
+function Component(props) {
+  return <JSX></JSX>
+}
+```
+
+
+
+这样的组件定义很“纯”，React 设计都是基于这个“纯”的概念。
+
+
+
+### 3.组件渐进式 1.0
+
+从上面来看，React 组件天生具备了一些 React 核心特性：Props 和 JSX，但此时的组件缺乏一点灵性：State。
+
+这时我们需要一种机制，让组件具备可以获得更多 React 核心特性的能力，我们称之为 Hook。以 `useState` 为例：
+
+```tsx
+// 示意代码
+function Component(props) {
+  // 状态
+  const [state, setState] = useState(initialState)
+  
+  return <JSX></JSX>
+}
+```
+
+这样我们组件就有了记忆。
+
+
+
+### 4.组件渐进式 2.0
+
+获得了 State 的能力之后，此时的组件在 React 的世界内基本是足够强大了，但是组件难免不了要和外部系统打交道，这已经超出了 React 的范围。
+
+这时我们同样需要一种机制，让组件可以控制或同步 React 世界之外的系统，我们也称之为 Hook，确切一点称为 Effect Hook。以 `useEffect` 为例：
+
+```tsx
+// 示意代码
+function Component(props) {
+  const [state, setState] = useState(initialState)
+  
+  // 通向 React 世界之外的传送门
+  useEffect(() => {
+		// 具体控制和同步操作
+    
+    return () => {
+      // 清理
+    }
+  })
+  
+  return <JSX></JSX>
+}
+```
+
+现在的 React 组件具备了更多核心特性以及和外部系统同步的能力的同时，组件的复杂度也开始上升，尤其是引入 Effect Hook。接下来我们对 Effect Hook 进一步解释。
+
+### 5.Effect Hook
+
+所有的 Hook 都寄生于组件，所以 Effect Hook 自然不例外。尽管组件的运行和 Hook 的运行都是独立的过程，但是理解组件的生命周期有助于理解组件代码运行以及 Hook 的运行。
+
+#### 组件的生命周期
+
+组件渲染过程大致分为：Render 和 Commit。Render 阶段即执行组件函数，得到对应 UI 的描述；Commit 阶段则根据 UI 的描述应用到 DOM 树，最后浏览器开始渲染。
+
+组件按照存在的时间顺序可以分为：挂载时，更新时，卸载时。
+
+
+
+#### Effect Hook 结构定义
+
+类型定义如下：
+
+```typescript
+type EffectCallback = () => (void | Destructor);
+```
+
+Effect Hook 包含执行部分和清理部分。执行部分即函数体，执行部分返回的函数体部分为清理部分。以 `useEffect` 为例：
+
+```tsx
+// 示例代码
+useEffect(() => {
+	// 执行部分
+  
+  return () => {
+    // 清理部分
+  }
+})
+```
+
+
+
+`useEffect` 让组件和外部世界（React以外的系统）建立了联系。
+
+
+
+#### Effect Hook 的生命周期
+
+尽管 Effect Hook 寄生在组件上，但是其运行独立于组件的渲染过程的，它在不同的时间阶段有自己的执行顺序。如下图所示（大致流程）：
+
+![image-20221024202910095](/Users/xiaomingxu/Library/Application Support/typora-user-images/image-20221024202910095.png)
+
+可以看到：
+
+1. Effect Hook 会在浏览器渲染之后执行
+2. 每个阶段可以执行多个 Effect Hook，且独立
+3. 组件挂载时，只运行执行部分，不运行清理部分
+4. 组件更新时，先运行清理部分，然后再运行执行部分
+5. 组件卸载时，只运行清理部分
+
+
+
+### 6.最后
+
+Hook 渐进式增强了组件，这也为组件的设计提供了参考，例如你的组件是否真的需要 State，是否真的需要 Effect等。
+
+如果你还是感觉 Effect Hook 用起来很难，也有可能是 React 有意而为之，结果就是要么少用或不用，要么封装出更容易理解的方式来使用。
+
+React 的 Hook 可能是一个很好的东西，但是现在官方既无法在文档和技术上完备，个人觉得有点仓促，需要给 Hook 和 React 团队点时间。目前来看还是得依靠日常实践和 Google 搜索来学习 React Hook，当 React 文档和技术完备时，你可能也不需要它了。
