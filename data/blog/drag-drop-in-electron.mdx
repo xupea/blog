@@ -1,0 +1,23 @@
+---
+title: Electron 中的文件拖拽
+date: '2020-12-21'
+tags: ['electron', 'drag-drop']
+draft: false
+summary: '本文覆盖的场景是从桌面或文件夹中拖拽文件到 Electron 应用中，以及在 Electron 应用中拖拽文件到桌面或文件夹中。'
+---
+
+本文覆盖的场景是从桌面或文件夹中拖拽文件到 Electron 应用中，以及在 Electron 应用中拖拽文件到桌面或文件夹中。
+
+核心是 `dragover` 和 `drop` 事件，以及 `webContents.startDrag(item)`。
+
+## 发现的问题
+
+1. console.log(e) 没有结果，但是 e.dataTransfer.files 有值
+
+## 参考链接：
+
+https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop
+
+https://www.electronjs.org/docs/latest/api/web-contents#contentsstartdragitem
+
+https://www.electronjs.org/docs/latest/tutorial/native-file-drag-drop
