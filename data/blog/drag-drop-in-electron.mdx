@@ -6,9 +6,146 @@ draft: false
 summary: '本文覆盖的场景是从桌面或文件夹中拖拽文件到 Electron 应用中，以及在 Electron 应用中拖拽文件到桌面或文件夹中。'
 ---
 
-本文覆盖的场景是从桌面或文件夹中拖拽文件到 Electron 应用中，以及在 Electron 应用中拖拽文件到桌面或文件夹中。
+从桌面或文件夹中拖拽文件到 Electron 应用中，以及在 Electron 应用中拖拽文件到桌面或文件夹中，核心是 `dragstart`，`dragover` 和 `drop` 等 DOM 事件，以及 `webContents.startDrag(item)` 这个 Electron 提供的 API。
 
-核心是 `dragover` 和 `drop` 事件，以及 `webContents.startDrag(item)`。
+## 从桌面或文件夹拖拽文件到 Electron 应用
+
+1. 定义可接受区域以及其样式
+
+```html
+<div
+  id="drop_zone"
+  ondrop="dropHandler(event);"
+  ondragover="dragOverHandler(event);">
+  <p>Drag one or more files to this <i>drop zone</i>.</p>
+</div>
+```
+```css
+#drop_zone {
+  border: 5px solid blue;
+  width: 200px;
+  height: 100px;
+}
+```
+
+2. 处理事件
+
+为了能触发 `drop` 事件，我们需要 在 `dragover` 事件处理中 `ev.preventDefault();`
+
+```javascript
+function dragOverHandler(ev) {
+  console.log("File(s) in drop zone");
+
+  // Prevent default behavior (Prevent file from being opened)
+  ev.preventDefault();
+}
+```
+
+使用 `dataTransfer` 属性来获取文件信息，注意 `items` 和 `files` 都是类数组的，既不能使用数组的方法来遍历
+
+```javascript
+function dropHandler(ev) {
+  console.log("File(s) dropped");
+
+  // Prevent default behavior (Prevent file from being opened)
+  ev.preventDefault();
+
+  if (ev.dataTransfer.items) {
+    // Use DataTransferItemList interface to access the file(s)
+    [...ev.dataTransfer.items].forEach((item, i) => {
+      // If dropped items aren't files, reject them
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        console.log(`… file[${i}].name = ${file.name}`);
+      }
+    });
+  } else {
+    // Use DataTransfer interface to access the file(s)
+    [...ev.dataTransfer.files].forEach((file, i) => {
+      console.log(`… file[${i}].name = ${file.name}`);
+    });
+  }
+}
+```
+
+3. 优化体验
+
+可以让接收拖拽文件的区域样式变化来提升用户体验，可以借助 `dragenter` 和 `dragleave` 这两个事件
+
+可以高亮背景或者边框来提示可以接收文件拖拽
+
+```javascript
+function dragEnterHandler(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  
+  // modify the css of drag-zone
+}
+```
+
+重置样式
+
+```javascript
+function dragLeaveHandler(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  
+  // reset the css of drag-zone
+}
+```
+
+## 从 Electron 应用拖拽文件到桌面或文件夹
+
+1. 定义可拖拽区域以及其样式
+
+```html
+<div draggable="true" id="drag-zone">Drag me</div>
+```
+
+```css
+#drag-zone {
+  border:2px solid black;
+  border-radius:3px;
+  padding:5px;
+  display:inline-block;
+}
+```
+
+2. 处理事件
+
+我们需要借助 `dragstart` 这个事件，通过 IPC 调用 `contents.startDrag(item)`
+
+renderer.js 文件定义如下：
+
+```javascript
+document.getElementById('drag-zone').ondragstart = (event) => {
+  event.preventDefault();
+  window.electron.startDrag('drag-and-drop-1.md');
+}
+```
+
+preload.js 文件如下定义：
+```javascript
+const { contextBridge, ipcRenderer } = require('electron/renderer')
+
+contextBridge.exposeInMainWorld('electron', {
+  startDrag: (fileName) => ipcRenderer.send('ondragstart', fileName)
+})
+```
+
+main.js 文件定义如下：
+```javascript
+ipcMain.on('ondragstart', (event, filePath) => {
+  event.sender.startDrag({
+    file: path.join(__dirname, filePath),
+    icon: iconName
+  })
+})
+```
+
+3. 注意事项
+
+- 需要被拖拽的文件必须要在硬盘存在，不能是网络文件
 
 ## 发现的问题
 
