@@ -1,0 +1,79 @@
+---
+title: electron npm 包分析
+date: '2024-5-5'
+tags: ['electron']
+draft: false
+summary: '本文通过分析 `electron` 这个 npm 包，从而更加深入理解 Electron 应用的运行'
+---
+
+本文通过分析 `electron` 这个 npm 包，从而更加深入理解 Electron 应用的运行。尝试分析两个问题：electron 包目录结构 和 electron 命令。
+
+#### 1. electron 包目录结构
+
+通过 https://www.npmjs.com/package/electron?activeTab=code 我们可以看 electron 包的目录结构是这样：
+
+![electon-npm-code](/static/images/electron/electon-npm-code.png)
+
+但是实际上通过 `npm i electron --save-dev` 命令，目录却是这样：
+
+![electron-dist-mac](/static/images/electron/electron-dist-mac.png)
+
+多出来的 `path.txt`文件 以及 `dist` 目录是如何来的呢？
+
+通过分析 electron 包的 package.json 文件，我们执行 `npm i electron --save-dev` 命令，会触发 postinstall，从而执行 `install.js`：
+
+```
+"postinstall": "node install.js"
+```
+
+通过源码我们可以知道 `install.js` 主要有两个作用：
+
+1. 下载对应版本的 Electron 压缩文件，并解压到 `dist` 目录
+
+例如在 Mac M1电脑上，使用的 Electron 版本是 30.0.2，则会从以下链接下载：
+
+https://github.com/electron/electron/releases/download/v30.0.2/electron-v30.0.2-darwin-arm64.zip
+
+在 Windows x64 下，使用的 Electron 版本是 30.0.2，则会从以下链接下载：
+
+https://github.com/electron/electron/releases/download/v30.0.2/electron-v30.0.2-win32-x64.zip
+
+2. 将可执行的二进制文件相对于 dist 目录的路径存储到 `path.txt` 中
+
+Mac 下为：
+
+```
+Electron.app/Contents/MacOS/Electron
+```
+
+Windows 下为：
+
+```
+electron.exe
+```
+
+#### 2. electron 命令
+
+项目中我们使用 `electron .` 来启动应用，那  `electron .` 是如何工作？
+
+我们知道任何通过 `npm install` 的包所产生的命令，都遵循 https://docs.npmjs.com/cli/v10/configuring-npm/package-json#bin 这个文档说明，所以通过 electron 包的 package.json 我们可以看出
+
+```
+{
+  ...
+  "bin": {
+    "electron": "cli.js"
+  },
+  ...
+}
+```
+
+所以 `electron .` 实际上执行的是 `cli.js`。
+
+`cli.js` 核心就是通过 Nodejs 的 `child_process` 的 `spawn` 函数，传递 Electron 可执行文件路径以及相关参数，创建出一个子进程，从而启动整个 Electron 应用。
+
+Electron 可执行文件路径是由 `path.txt` 提供的，而 `path.txt` 则是由上一步 `install.js` 生成的。
+
+#### 3. 待定
+
+使用 `electron .` 启动程序的缺陷是每次代码更新都需要手动重启，我们可以使用 `electronmon` 来替换 `electron` 命令。
