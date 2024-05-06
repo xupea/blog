@@ -130,10 +130,13 @@ console.log(window.myAPI)
 
 这一功能非常有用：
 
-- 通过向呈现器公开 ipcRenderer 助手，你可以使用进程间通信（IPC）从呈现器触发主进程任务（反之亦然）。
-- 如果你正在为一个托管在远程URL上的现有网络应用程序开发一个Electron封装器，你可以在呈现器的窗口全局中添加自定义属性，这些属性可用于网络客户端的桌面逻辑。
+- 通过向渲染进程暴露 `ipcRenderer` ，你可以使用进程间通信（IPC）从渲染进程触发主进程的任务（反之亦然）。
+- 使用 Electron 包裹一个在线网站，你可以在渲染进程的 `window` 对象中添加自定义属性和方法，这些属性和方法仅对桌面端生效。
 
 ### 工具进程
 
-每个 Electron 应用程序都可以使用 UtilityProcess API 从主进程中产生多个子进程。实用程序在 Node.js 环境中运行，这意味着它能够要求模块并使用所有 Node.js API。例如，实用程序可用于托管不受信任的服务、CPU 密集型任务或容易崩溃的组件，这些任务或组件以前会托管在主程序或使用 Node.js child_process.fork API 生成的程序中。实用程序进程与 Node.js child_process 模块生成的进程之间的主要区别在于，实用程序进程可以使用 MessagePorts 与呈现器进程建立通信通道。与 Node.js child_process.fork API 相比，当需要从主进程中分叉出一个子进程时，Electron 应用程序总是更倾向于使用 UtilityProcess API。
+Electron 应用程序可以使用 UtilityProcess API 从主进程中产生多个 Node.js 子进程。子进程是在 Node.js 环境中运行，这意味着它能够使用 `require` 模块并使用所有 Node.js API。
 
+例如，工具集成可用于托管不受信任的服务、CPU 密集型任务或容易崩溃的组件，这些任务或组件以前会托管在主进程或使用 Node.js `child_process.fork` API 生成的进程中。
+
+工具进程与 Node.js `child_process` 模块生成的进程之间的主要区别在于，工具进程可以使用 `MessagePorts` 与渲染进程建立通信通道。与 Node.js `child_process.fork` API 相比，当需要从主进程中分叉出一个子进程时，Electron 应用程序总是更倾向于使用 UtilityProcess API。
