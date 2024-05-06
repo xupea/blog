@@ -1,0 +1,139 @@
+---
+title: Electron 进程模型
+date: '2024-5-6'
+tags: ['electron']
+draft: false
+summary: 'Electron 继承了 Chromium 的多进程架构，这使得 Electron 在架构上与现代网页浏览器非常相似，这种相似性可以让开发者更好地理解浏览器原理。'
+---
+
+Electron 继承了 Chromium 的多进程架构，这使得 Electron 在架构上与现代网页浏览器非常相似，这种相似性可以让开发者更好地理解浏览器原理。
+
+### 为什么不是单进程？
+
+简单来说，Web 浏览器是非常复杂的应用程序（仅此于操作系统）。除了显示网页内容的主要功能外，浏览器还有许多次要功能，例如管理多个窗口（或标签页）和加载第三方扩展。
+
+在早期（IE 时代），浏览器通常使用单个进程来实现所有这些功能。虽然这种模式意味着为每个打开的标签页减少了开销，但也意味着一个网站崩溃或挂起会影响整个浏览器。
+
+### 多进程模式
+
+为了解决这个问题，Chrome 浏览器团队决定让每个标签页都在自己的进程中渲染，从而限制网页上的错误或恶意代码对整个应用程序造成的危害。然后，由一个浏览器进程来控制这些进程以及整个应用程序的生命周期。Chrome 漫画中的下图形象地展示了这一模型：
+
+![Chrome&#39;s multi-process architecture](https://www.electronjs.org/assets/images/chrome-processes-0506d3984ec81aa39985a95e7a29fbb8.png)
+
+Electron 应用程序的结构非常相似。作为应用程序开发者，你需要控制两类进程：主进程和渲染进程，它们类似于上面提到的 Chrome 浏览器进程和渲染进程。
+
+### 主进程
+
+每个 Electron 应用程序都有且仅有一个主进程，作为应用程序的入口点。主进程在 Node.js 环境中运行，这意味着它能够使用 `require` 来加载模块并使用所有 Node.js 的API。
+
+主进程的作用主要包括：窗口管理，应用生命周期，Native APIs
+
+#### 窗口管理
+
+主进程的主要作用是使用 `BrowserWindow` 模块来创建和管理应用程序窗口。
+
+`BrowserWindow` 类的每个实例都会创建一个应用程序窗口，在单独的渲染进程中加载网页。你可以在主进程中使用窗口的 webContents 对象与网页内容进行交互。
+
+```javascript
+const { BrowserWindow } = require('electron')
+
+const win = new BrowserWindow({ width: 800, height: 1500 })
+win.loadURL('https://github.com')
+
+const contents = win.webContents
+console.log(contents)
+```
+
+> 注：BrowserView（已经废弃），Iframes，WebViews，WebContentsView 也会创建对应的渲染进程，webContents 也是可用的。
+
+由于 `BrowserWindow` 模块是一个 `EventEmitter`，因此你还可以为各种用户事件（例如窗口最小化或最大化）添加处理。
+
+当 `BrowserWindow` 实例被销毁时，其对应的渲染进程也会随之终止。
+
+#### 应用生命周期
+
+主进程还通过 Electron 的 `app` 模块控制应用程序的生命周期。该模块提供了大量的事件和方法，你可以用它们来添加自定义行为（例如，以编程方式（而不是点击关闭按钮）退出应用程序、修改任务栏等）。
+
+一个实际例子
+
+```
+// 在非 macOS 系统下，当所有窗口关闭时退出应用
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
+})
+```
+
+当然 `app` 模块远不止这些功能，还有注册自定义协议，获取系统路径等等
+
+#### Native APIs
+
+Electron 不仅仅是对 Chromium 封装来展示网页内容，主进程还提供了自定义的 API，以便与操作系统进行交互。Electron 提供了很多可以控制本地桌面的功能，例如菜单，托盘，对话框，通知，深度链接，文件拖拽，进度条等等，而且这些功能都是跨平台的
+
+### 渲染进程
+
+说到这里，你可能会想，如果 Node.js 和 Electron 的本地桌面功能只能从主进程访问，那么你的渲染进程中用户界面如何与这些功能交互呢？事实上，没有直接导入 Electron 内容脚本的方法。
+
+### Preload 脚本
+
+Preload 脚本代码在渲染进程里执行，但是在网页内容加载之前。这些脚本运行在渲染上下文中，但是可以访问 Nodejs API，从而获得更多权限。
+
+Preload 脚本可通过 BrowserWindow 构造函数的 webPreferences 选项附加到主进程。
+
+```javascript
+const { BrowserWindow } = require('electron')
+// ...
+const win = new BrowserWindow({
+  webPreferences: {
+    preload: 'path/to/preload.js'
+  }
+})
+// ...
+```
+
+由于 Preload 脚本与渲染器共享一个全局 Window 接口，并可访问 Node.js API，因此它可以通过在 window 全局中公开任意 API 来增强渲染容器，从而让你的网页内容可以使用这些 API。
+
+虽然 Preload 脚本与其所连接的渲染容器共享一个 window 全局对象，但由于默认情况下使用了 contextIsolation，因此无法将 Preload 脚本中的任何变量直接连接到 window 对象上。
+
+```
+// preload.js
+window.myAPI = {
+  desktop: true
+}
+```
+
+
+
+```
+// renderer.js
+console.log(window.myAPI)
+// => undefined
+```
+
+上下文隔离意味着 Preload 脚本与渲染容器的主世界隔离，以避免任何特权 API 泄露到网页内容的代码中。
+
+使用 `contextBridge` 模块可以安全地实现这一点
+
+```javascript
+// preload.js
+const { contextBridge } = require('electron')
+
+contextBridge.exposeInMainWorld('myAPI', {
+  desktop: true
+})
+```
+
+```javascript
+// renderer.js
+console.log(window.myAPI)
+// => { desktop: true }
+```
+
+这一功能非常有用：
+
+- 通过向呈现器公开 ipcRenderer 助手，你可以使用进程间通信（IPC）从呈现器触发主进程任务（反之亦然）。
+- 如果你正在为一个托管在远程URL上的现有网络应用程序开发一个Electron封装器，你可以在呈现器的窗口全局中添加自定义属性，这些属性可用于网络客户端的桌面逻辑。
+
+### 工具进程
+
+每个 Electron 应用程序都可以使用 UtilityProcess API 从主进程中产生多个子进程。实用程序在 Node.js 环境中运行，这意味着它能够要求模块并使用所有 Node.js API。例如，实用程序可用于托管不受信任的服务、CPU 密集型任务或容易崩溃的组件，这些任务或组件以前会托管在主程序或使用 Node.js child_process.fork API 生成的程序中。实用程序进程与 Node.js child_process 模块生成的进程之间的主要区别在于，实用程序进程可以使用 MessagePorts 与呈现器进程建立通信通道。与 Node.js child_process.fork API 相比，当需要从主进程中分叉出一个子进程时，Electron 应用程序总是更倾向于使用 UtilityProcess API。
+
