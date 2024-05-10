@@ -2,7 +2,7 @@
 title: Electron 101
 date: '2024-5-1'
 tags: ['electron']
-draft: true
+draft: false
 summary: 'Electron 是一个使用 JavaScript、HTML 和 CSS 来构建桌面应用程序的开源框架'
 ---
 
@@ -10,11 +10,15 @@ summary: 'Electron 是一个使用 JavaScript、HTML 和 CSS 来构建桌面应�
 
 Electron 是一个使用 JavaScript、HTML 和 CSS 来构建桌面应用程序的开源框架。通过集成 Chromium 和 Node.js，Electron 允许你维护一套 JavaScript 代码库，并创建可在 Windows、macOS 和 Linux 上运行的跨平台桌面应用程序——而不需要原生开发经验。
 
-想要精通 Electron 开发，需要在以下三个方面：Web 技术，Nodejs，Native。
+下图很好的地说明 Electron 的基础组成：
+
+![electron-composition](/static/images/electron/electron-composition.png)
+
+所以，想要精通 Electron 开发，需要在以下三个方面：Web 技术，Nodejs，Native。
 
 > 简单的项目可能不需要原生开发经验，但是随着 Electron 提供的原生功能无法满足项目，那就需要原生（C++ 或 Rust）来提供给 Nodejs。
 
-这里简单介绍一下 Chromium 和 Nodejs。
+这里简单介绍一下 Chromium 和 Nodejs，以及 Native。
 
 ### Chromium
 
@@ -60,6 +64,10 @@ Nodejs 是一个开源的跨平台 Javascript 运行时。
 
 Nodejs 是复杂的应用必备，例如即时通信应用，网络，本地数据库，通知，截图，音视频都需要 Nodejs 的知识和能力。
 
+### Native
+
+Native 是指 Electron 提供的原生功能无法满足项目，那就需要原生（C++ 或 Rust）来提供给 Nodejs。
+
 ### 挑战
 
-对于前端开发来说，Nodejs 这块是 Electron 开发过程中最大的挑战。
+对于前端开发来说，Nodejs 这块是 Electron 开发过程中最大的挑战，其次就是原生开发和通信。
