@@ -3,8 +3,8 @@ const siteMetadata = {
   title: 'Tech Blog',
   author: 'Peter Xu',
   headerTitle: 'Tech Blog',
-  description: 'A blog created with Next.js and Tailwind.css',
-  language: 'en-us',
+  description: 'Peter Xu 的技术博客',
+  language: 'zh-cn',
   theme: 'system', // system, dark or light
   siteUrl: 'https://blog.xupea.com',
   siteRepo: 'https://github.com/xupea/blog',
@@ -19,7 +19,7 @@ const siteMetadata = {
   linkedin: 'https://www.linkedin.com',
   threads: 'https://www.threads.net',
   instagram: 'https://www.instagram.com',
-  locale: 'en-US',
+  locale: 'zh-CN',
   analytics: {
     // If you want to use an analytics provider you have to add it to the
     // content security policy in the `next.config.js` file.
