@@ -1,0 +1,100 @@
+---
+title: Zustand 在大型复杂项目中的最佳实践
+date: '2024-05-20'
+tags: ['zustand']
+draft: false
+summary: 本文结合 Zustand 官方和实际项目，总结出的最佳实践
+images: []
+---
+
+## 定义 Store
+
+### 单个 Store + Store 分割
+
+复杂应用随着功能的增多，Store 也会变得越来越大，不管是一个大的 Store 还是多个 Store 来存储应用状态和 Action，都是不容易维护的。所以我们使用官方推荐的实践：[单个 Store](https://docs.pmnd.rs/zustand/guides/flux-inspired-practice#recommended-patterns) 和 [Store 分割](https://docs.pmnd.rs/zustand/guides/slices-pattern)。
+
+通过 [Store 分割](https://docs.pmnd.rs/zustand/guides/slices-pattern) 可以将状态和相关的 Action 划分到不同的 Slice 中，使每个 Slice 专注于管理一个特定的状态和 Action。这样代码更加清晰，职责更加明确，维护起来也会更容易；同时 Slice 通常会被放置到单独文件中，这样的模块化的结构使得代码更加有组织，每个 Slice 都是一个独立的模块，便于理解和修改的同时，而且还增强了可测试性；还有不同的团队成员可以同时开发和维护不同的 Slice，而不会相互干扰或冲突（Pull Request），提高了开发效率。
+
+例如电商应用，可以将状态划分为多个 Slice，比如用户（user）、购物车（cart）、产品（products）等。每个 Slice 独立管理其状态和逻辑，但最终在一个 store 中组合：
+
+```typescript
+import create from 'zustand';
+
+// 用户 Slice
+const useUserSlice = (set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+  clearUser: () => set({ user: null }),
+});
+
+// 购物车 Slice
+const useCartSlice = (set) => ({
+  cart: [],
+  addToCart: (item) => set((state) => ({ cart: [...state.cart, item] })),
+  removeFromCart: (itemId) => set((state) => ({
+    cart: state.cart.filter((item) => item.id !== itemId)
+  })),
+});
+
+// 产品 Slice
+const useProductsSlice = (set) => ({
+  products: [],
+  setProducts: (products) => set({ products }),
+  clearProducts: () => set({ products: [] }),
+});
+
+// 结合所有 Slice 形成单个 Store
+const useStore = create((set) => ({
+  ...useUserSlice(set),
+  ...useCartSlice(set),
+  ...useProductsSlice(set),
+}));
+
+export default useStore;
+```
+
+### Store 扁平化
+
+状态嵌套过深会带来两个问题，从而影响代码的可维护性、性能以及开发效率。
+
+例如上面的例子中，所有状态和 Action 都是暴露在第一层的
+
+```typescript
+// 结合所有 Slice 形成单个 Store
+const useStore = create((set) => ({
+  ...useUserSlice(set),
+  ...useCartSlice(set),
+  ...useProductsSlice(set),
+}));
+```
+
+这样很容易结合[自动生成的选择器函数](https://docs.pmnd.rs/zustand/guides/auto-generating-selectors)，方便调用。
+
+### 状态和 Action 的命名明确且唯一
+
+由于需要 Store 扁平，导致所有状态和 Action 都会在同一层，这就很容易因命名冲突而导致覆盖问题，所以我们需要为状态和 Action 的命名增加规则：
+
+- 通过添加特定的前缀来区分
+- 语义化命名，足够详细，使变量和函数的名称反映其用途和含义
+
+目前只能通过这样保证命名唯一。当然我们也是可以通过写一些脚本来检查名称被覆盖时给出提示。
+
+### Store 不要引用其它 Store
+
+为了提高 Store 的可测试性，Store 之间不要依赖，如果需要其它 Store 的内容是可以通过函数参数来传递。
+
+> 这将会把复杂度转移到调用方，这意味着组件需要处理依赖
+
+### 使用 TypeScript 编写
+
+无需要多讲，Typescript 是任何前端开发的标配和最佳实践，它提供了类型安全，更好的维护性，更好的 IDE 类型提示，以及更好的文档（类型即文档）
+
+## Store 调用
+
+### 使用选择器函数
+
+按需使用，避免不必要的渲染
+
+### useShallow
+
+当使用计算状态时
