@@ -1,0 +1,32 @@
+---
+title: 深入理解 addEventListener：从基础到高级特性
+date: '2021-1-12'
+tags: ['electron']
+draft: false
+summary: '全面讲解 addEventListener 的三个参数、事件捕获与冒泡、passive/once/signal 的使用场景与陷阱'
+---
+
+上下文隔离（Context Isolation）是一项功能，可确保你的 `preload` 脚本和 Electron 的内部逻辑都在一个独立的上下文中运行，而不是在 webContents 加载的网站中。这对安全性非常重要，因为它有助于防止网站访问 Electron 内部或你的预加载脚本，从而可以访问的强大 API。
+
+这意味着，`preload` 脚本可访问的 `window` 对象实际上与网站可访问的对象不同。例如，如果在预加载脚本中设置 `window.hello = 'wave'`，并启用上下文隔离，那么如果网站尝试访问 `window.hello`，它将是 undefined。
+
+自 Electron 12 起，上下文隔离已默认启用，是所有应用程序的推荐安全设置。
+
+Electron 中有一个专用模块可以帮助你轻松实现这一目标。使用 contextBridge 模块，可以安全地将 API 从预载脚本的孤立上下文公开到网站运行的上下文中。网站也可以通过 window.myAPI 访问 API，就像以前一样。
+
+```javascript
+// preload.js
+const { contextBridge } = require('electron')
+
+contextBridge.exposeInMainWorld('myAPI', {
+  desktop: true
+})
+```
+
+```javascript
+// renderer.js
+console.log(window.myAPI)
+// => { desktop: true }
+```
+
+> `contextBridge` 传输类型有限制。
